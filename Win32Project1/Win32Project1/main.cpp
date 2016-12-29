@@ -1,8 +1,10 @@
 #include <SFML/Graphics.hpp>
 #include <map>
+#include <vector>
 #include "Hero.h"
 #include "Environment.h"
 #include "TextureManager.h"
+#include "Foreign.h"
 
 int main()
 {
@@ -15,8 +17,9 @@ int main()
 	window.setFramerateLimit(60);
 
 	//Objects
-
+	std::vector<Block> blocks;
 	TextureManager textures;
+	bool fall = true;
 	textures.addTexture("dud.png");
 	textures.addTexture("sample_spritesheet.png");
 	sf::Sprite block(textures.loadTexture("dud.png"));
@@ -25,8 +28,13 @@ int main()
 	block.setPosition(150, 150);
 
 	Block b({ 1000, 50 }, { 0, 500 });
-	Hero p({ 50, 50 }, { 0, 250 }, textures.loadTexture("sample_spritesheet.png"));
-
+	Foreign missile({ 500, 460});
+	Block platform({ 100, 100 }, { 540, 400 });
+	int curr = 0; // index of the current block
+	blocks.push_back(b);
+	blocks.push_back(platform);
+	Hero p({ 0, 250 }, textures.loadTexture("sample_spritesheet.png"));
+	
 	//Logic variables
 	bool jumping = false;
 	int animation = 0;
@@ -40,20 +48,46 @@ int main()
 	sf::Clock cl; 
 
 	while (window.isOpen()) {
+		bool collisions = false; //tells us whether collisions have occurred
+		bool move = true; // checks if the player is eligible to move or not
+
+		missile.fire();
 		//Events
 		sf::Event event;
 		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up) && !jumping) {
-			p.move({ 0, gravity });
+			p.move({ 0, jumpSpeed });
 			jumping = true;
 		}
 
 		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right)) {
 			p.setTextureRect(sf::IntRect(animation * 64, 0, 64, 64));
-			p.move({ moveSpeed, 0 });
+			for (int i = 0; i < blocks.size(); i++) {
+				if (curr != i && blocks[i].colliding(&p, 'l')) {
+					move = false;
+				}
+			}
+			if (move) {
+				p.move({ moveSpeed, 0 });
+			}
+			if (!jumping && !blocks[0].colliding(&p, 'l')) {
+				jumpSpeed = 0;
+				jumping = true;
+			}
 		}
 		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left)) {
 			p.setTextureRect(sf::IntRect(animation * 64, 64, 64, 64));
-			p.move({ -moveSpeed, 0 });
+			for (int i = 0; i < blocks.size(); i++) {
+				if (curr != i && blocks[i].colliding(&p, 'r')) {
+					move = false;
+				}
+			}
+			if (move) {
+				p.move({ -moveSpeed, 0 });
+			}
+			if (!jumping && !blocks[0].colliding(&p, 'r')) {
+				jumpSpeed = 0;
+				jumping = true;
+			}
 		}
 			
 		
@@ -76,36 +110,47 @@ int main()
 		}
 
 		//Gravity
-		if (!jumping && !sf::Keyboard::isKeyPressed(sf::Keyboard::Up)) {
+		if (fall && !jumping && !sf::Keyboard::isKeyPressed(sf::Keyboard::Up)) {
 			if (p.getY() < b.getY()) {
 				fallSpeed += gravity;
 				p.move({ 0, fallSpeed });
 			}
 			else {
 				fallSpeed = 0;
+				fall = false;
 			}
 		}
-		else {
-			if (p.getY() < b.getY() || jumpSpeed < 1) {
-				jumpSpeed += gravity;
-				p.move({ 0, jumpSpeed });
-			}
-			else {
-				p.setY(b.getY());
-				jumpSpeed = -10;
-				jumping = false;
+		else if(jumping) {
+			for (int i = 0; i < blocks.size(); i++) {
+				if (!blocks[i].colliding(&p, 't')) {
+					jumpSpeed += gravity;
+					p.move({ 0, jumpSpeed });
+				}
+				else {
+					p.setY(blocks[i].getY());
+					jumpSpeed = -20;
+					jumping = false;
+					curr = i;
+					break;
+				}
 			}
 		}
 
-		std::cout << cl.getElapsedTime().asMicroseconds() << std::endl;
+		//std::cout << cl.getElapsedTime().asMicroseconds() << std::endl;
 		cl.restart();
 		
+		if (p.foreignInteract(missile)) {
+			p.takeDamage(5);
+		}
+
 
 		//Draw
 		window.clear();
 
 		window.draw(block);
 		window.draw(test);
+		platform.draw(window);
+		missile.draw(window);
 		b.draw(window);
 		p.draw(window);
 
