@@ -19,8 +19,35 @@ public:
 		window.draw(block);
 	}
 
+	bool colliding(Hero* hero, char flag) {
+		if (flag == 't') {
+			return hero->getY() >= block.getPosition().y - 50 &&
+				hero->getX() >= block.getPosition().x &&
+				hero->getX() <= block.getPosition().x + block.getSize().x;
+		}
+		else if (flag == 'r' || flag == 'l') {
+			return hero->getX() <= block.getPosition().x + block.getSize().x &&
+				hero->getX() >= block.getPosition().x &&
+				hero->getY() >= block.getPosition().y - 50 &&
+				hero->getY() <= block.getPosition().y + block.getSize().y;
+		}
+		else if (flag == 'b') {
+			return hero->getY() <= block.getPosition().y + block.getSize().y &&
+				hero->getX() >= block.getPosition().x &&
+				hero->getX() <= block.getPosition().x + block.getSize().x;
+		}
+		else {
+			return false;
+		}
+	}
+
 	int getY() {
-		return block.getPosition().y - block.getSize().y;
+		return block.getPosition().y - 50;
+	}
+
+	//landing location
+	int getLand() {
+		return block.getPosition().y - 50;
 	}
 
 	~Block() {
